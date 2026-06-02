@@ -10,7 +10,10 @@ class RatingSeeder extends Seeder
 {
     public function run()
     {
-        $bookings = DB::table('bookings')->get();
+        $bookings = DB::table('bookings')
+            ->where('status', 'Confirmed')
+            ->whereDate('booking_date', '<', now()->toDateString())
+            ->get();
 
         foreach ($bookings as $booking) {
 
@@ -23,7 +26,7 @@ class RatingSeeder extends Seeder
             // random skip (biar ga semua ada rating)
             if (rand(0, 1) == 0) continue;
 
-            // random rate 1–5
+            // random rate 3–5 (karena udah confirmed & selesai → biasanya bagus)
             $rate = rand(3, 5);
 
             // optional review (50% ada, 50% null)

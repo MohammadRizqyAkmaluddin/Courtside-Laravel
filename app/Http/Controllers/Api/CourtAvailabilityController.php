@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Additional;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\Court;
 use App\Models\OperationHour;
 use App\Models\BookingSession;
 use App\Models\BookingHold;
+use App\Models\ManualBookingSession;
 
 class CourtAvailabilityController extends Controller
 {
@@ -112,27 +114,39 @@ class CourtAvailabilityController extends Controller
         }
 
         $bookingExists = BookingSession::whereHas('booking', function ($q) use ($courtId, $date) {
-                $q->where('court_id', $courtId)
+            $q->where('court_id', $courtId)
                 ->whereDate('booking_date', $date)
                 ->where('status', 'paid');
-            })
+        })
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
-                ->where('end_time', '>', $start);
+                    ->where('end_time', '>', $start);
             })
             ->exists();
 
         if ($bookingExists) return false;
 
+        $manualExists = ManualBookingSession::whereHas('booking', function ($q) use ($courtId, $date) {
+            $q->where('court_id', $courtId)
+                ->whereDate('booking_date', $date);
+        })
+        ->where(function ($q) use ($start, $end) {
+            $q->where('start_time', '<', $end)
+            ->where('end_time', '>', $start);
+        })
+        ->exists();
+
+        if ($manualExists) return false;
+
         $holdExists = BookingHold::whereHas('header', function ($q) use ($courtId, $date) {
-                $q->where('court_id', $courtId)
+            $q->where('court_id', $courtId)
                 ->whereDate('booking_date', $date)
                 ->where('payment_status', 'pending')
                 ->where('expires_at', '>', now());
-            })
+        })
             ->where(function ($q) use ($start, $end) {
                 $q->where('start_time', '<', $end)
-                ->where('end_time', '>', $start);
+                    ->where('end_time', '>', $start);
             })
             ->exists();
 
@@ -191,8 +205,8 @@ class CourtAvailabilityController extends Controller
             return true;
         }
 
-        $start = Carbon::parse($date->toDateString().' '.$operation->open_time);
-        $end   = Carbon::parse($date->toDateString().' '.$operation->close_time);
+        $start = Carbon::parse($date->toDateString() . ' ' . $operation->open_time);
+        $end   = Carbon::parse($date->toDateString() . ' ' . $operation->close_time);
 
         // 🟢 HANDLE lewat tengah malam
         if ($end->lte($start)) {
@@ -230,20 +244,30 @@ class CourtAvailabilityController extends Controller
         $duration = $court->session_duration; // minutes
         $price = $court->price;
 
-        // booked (paid)
         $bookedSessions = BookingSession::whereHas('booking', function ($q) use ($court, $date) {
             $q->where('court_id', $court->id)
             ->whereDate('booking_date', $date)
             ->where('status', 'confirmed');
-        })->get();
+            })->get();
 
-
-        // holds (not expired)
-        $holds = BookingHold::whereHas('header', function ($q) use ($court, $date) {
+        $manualSessions = ManualBookingSession::whereHas('booking', function ($q) use ($court, $date) {
             $q->where('court_id', $court->id)
             ->whereDate('booking_date', $date)
-            ->where('payment_status', 'pending')
-            ->where('expires_at', '>', now());
+            ->where('status', 'confirmed');
+            })->get();
+
+        $holds = BookingHold::whereHas('header', function ($q) use ($court, $date) {
+            $q->where('court_id', $court->id)
+                ->whereDate('booking_date', $date)
+                ->where('payment_status', 'pending')
+                ->where('expires_at', '>', now());
+        })->get();
+
+        $manualHolds = BookingHold::whereHas('header', function ($q) use ($court, $date) {
+            $q->where('court_id', $court->id)
+                ->whereDate('booking_date', $date)
+                ->where('payment_status', 'Paid')
+                ->where('booking_type', 'Manual-booking');
         })->get();
 
         $sessions = [];
@@ -253,26 +277,40 @@ class CourtAvailabilityController extends Controller
             $end = $open->copy()->addMinutes($duration);
 
             $overlap =
-                $bookedSessions->contains(fn ($b) =>
+                $bookedSessions->contains(
+                    fn($b) =>
                     $start < Carbon::parse($b->end_time) &&
                     $end > Carbon::parse($b->start_time)
                 )
                 ||
-                $holds->contains(fn ($h) =>
+                $holds->contains(
+                    fn($h) =>
                     $start < Carbon::parse($h->end_time) &&
                     $end > Carbon::parse($h->start_time)
+                )
+                ||
+                $manualSessions->contains(
+                    fn($m) =>
+                    $start < Carbon::parse($m->end_time) &&
+                    $end > Carbon::parse($m->start_time)
+                )
+                ||
+                $manualHolds->contains(
+                    fn($m) =>
+                    $start < Carbon::parse($m->end_time) &&
+                    $end > Carbon::parse($m->start_time)
                 );
 
-                $now = Carbon::now('Asia/Jakarta');
+            $now = Carbon::now('Asia/Jakarta');
 
-                $isPast = $date->isToday() && $start->lt($now);
+            $isPast = $date->isToday() && $start->lt($now);
 
-                $sessions[] = [
-                    'start' => $start->format('H:i'),
-                    'end' => $end->format('H:i'),
-                    'price' => $price,
-                    'available' => !$overlap && !$isPast
-                ];
+            $sessions[] = [
+                'start' => $start->format('H:i'),
+                'end' => $end->format('H:i'),
+                'price' => $price,
+                'available' => !$overlap && !$isPast
+            ];
 
             $open->addMinutes($duration);
         }
@@ -289,8 +327,8 @@ class CourtAvailabilityController extends Controller
         string $open,
         string $close
     ): array {
-        $start = Carbon::parse($date->toDateString().' '.$open);
-        $end   = Carbon::parse($date->toDateString().' '.$close);
+        $start = Carbon::parse($date->toDateString() . ' ' . $open);
+        $end   = Carbon::parse($date->toDateString() . ' ' . $close);
 
         if ($end->lte($start)) {
             $end->addDay();
@@ -298,4 +336,17 @@ class CourtAvailabilityController extends Controller
 
         return [$start, $end];
     }
+
+    public function courtAdditional(Court $court)
+    {
+        $additionals = Additional::where('court_id', $court->id)
+            ->with('additionalType')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $additionals
+        ]);
+    }
 }
+

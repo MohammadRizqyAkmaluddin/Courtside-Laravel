@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
+            $table->enum('status', ['Active', 'Inactive'])->default('Active');
             $table->string('phone');
             $table->text('description');
             $table->text('rules');
@@ -24,7 +25,6 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8);
             $table->decimal('longitude', 11, 8);
             $table->string('link_map');
-            $table->string('bank_account')->nullable();
             $table->timestamps();
 
             $table->engine = 'InnoDB';

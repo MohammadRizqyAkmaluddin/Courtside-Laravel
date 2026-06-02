@@ -15,20 +15,30 @@ class DatabaseSeeder extends Seeder
             CitySeeder::class,
             UserSeeder::class,
             VenueSeeder::class,
+            VenueBankAccountSeeder::class,
+            VenueQrisSeeder::class,
             venueImageSeeder::class,
             CourtMaterialSeeder::class,
-            AdditionalTypeSeeder::class,
             SportTypeSeeder::class,
+            AdditionalTypeSeeder::class,
             CourtTypeSeeder::class,
+            CourtSeeder::class,
+            AdditionalSeeder::class,
             FacilityTypeSeeder::class,
             FacilitySeeder::class,
-            CourtSeeder::class,
             OperationHourSeeder::class,
             LevelSeeder::class,
             CommunitySeeder::class,
             CommunityMemberSeeder::class,
             BookingSeeder::class,
-            RatingSeeder::class
+            CancelRequestSeeder::class,
+            RatingSeeder::class,
+            WithdrawalSeeder::class,
+            BalanceSeeder::class,
+            StoreProductSeeder::class,
+            StoreTransactionSeeder::class,
+            EmployeeSeeder::class,
+            UserRefundCreditSeeder::class
         ]);
     }
 }

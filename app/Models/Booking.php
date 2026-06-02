@@ -17,9 +17,13 @@ class Booking extends Model
         'start_time',
         'end_time',
         'price',
+        'admin_fee',
+        'tax',
+        'total_price',
         'midtrans_order_id',
         'payment_status',
-        'status'
+        'status',
+        'code'
     ];
 
     public function sessions() {
@@ -36,5 +40,11 @@ class Booking extends Model
     }
     public function rating() {
         return $this->hasOne(Rating::class);
+    }
+    public function additional() {
+        return $this->hasMany(BookingAdditional::class);
+    }
+    public function cancel() {
+        return $this->hasOne(CancelRequest::class);
     }
 }

@@ -10,6 +10,8 @@ use App\Models\BookingSession;
 use App\Models\BookingHold;
 use App\Models\BookingHoldHeader;
 use App\Models\ActivityLevel;
+use App\Models\BookingHoldAdditional;
+use App\Models\BookingAdditional;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Midtrans\Snap;
@@ -29,6 +31,8 @@ class BookingHoldController extends Controller
             'sessions.*.start' => 'required',
             'sessions.*.end' => 'required',
             'sessions.*.price' => 'required|integer',
+            'additions' => 'nullable|array',
+            'additions.*.id' => 'required|exists:additionals,id'
         ]);
 
         $userId = Auth::id();
@@ -43,12 +47,13 @@ class BookingHoldController extends Controller
             'venue_id'     => $request->venue_id,
             'court_id'     => $request->court_id,
             'user_id'      => $userId,
+            'booking_type' => 'Self-Booking',
             'booking_date' => $request->date
         ]);
 
         $holds = [];
         foreach ($request->sessions as $session) {
-           $holds[] =  BookingHold::create([
+            $holds[] =  BookingHold::create([
                 'booking_hold_header_id' => $bookingHoldHeader->id,
                 'start_time' => $session['start'],
                 'end_time' => $session['end'],
@@ -56,10 +61,34 @@ class BookingHoldController extends Controller
             ]);
         }
 
+        $additionRows = [];
+
+        if ($request->has('additions')) {
+            foreach ($request->additions as $addition) {
+
+                $data = DB::table('additionals')
+                    ->where('id', $addition['id'])
+                    ->first();
+
+                if (!$data) continue;
+
+                $additionRows[] = [
+                    'booking_hold_header_id' => $bookingHoldHeader->id,
+                    'additional_id' => $data->id,
+                    'price' => $data->price,
+                ];
+            }
+        }
+
+        if (!empty($additionRows)) {
+            DB::table('booking_hold_additions')->insert($additionRows);
+        }
+
         return response()->json([
             'success' => true,
             'booking_hold_header_id' => $bookingHoldHeader->id,
             'sessions' => $holds,
+            'additional' => $additionRows
         ]);
     }
 
@@ -74,6 +103,8 @@ class BookingHoldController extends Controller
             'sessions.*.end' => 'required',
             'sessions.*.price' => 'required|integer',
             'guest_contact' => 'required|string',
+            'additions' => 'nullable|array',
+            'additions.*.id' => 'required|exists:additionals,id'
         ]);
 
         $checkExisting = BookingHoldHeader::where('guest_contact', $request->guest_contact)->first();
@@ -87,16 +118,16 @@ class BookingHoldController extends Controller
         $bookingHoldHeader = BookingHoldHeader::create([
             'venue_id' => $request->venue_id,
             'court_id' => $request->court_id,
-            'user_id'  => null,
             'guest_contact' => $request->guest_contact,
             'guest_name' => $request->guest_name,
+            'booking_type' => 'Self-Booking',
             'booking_date'  => $request->date,
             'expires_at' => $expiresAt
         ]);
 
         $holds = [];
         foreach ($request->sessions as $session) {
-           $holds[] =  BookingHold::create([
+            $holds[] =  BookingHold::create([
                 'booking_hold_header_id' => $bookingHoldHeader->id,
                 'start_time' => $session['start'],
                 'end_time' => $session['end'],
@@ -104,33 +135,60 @@ class BookingHoldController extends Controller
             ]);
         }
 
+        $additionRows = [];
+
+        if ($request->has('additions')) {
+            foreach ($request->additions as $addition) {
+
+                $data = DB::table('additionals')
+                    ->where('id', $addition['id'])
+                    ->first();
+
+                if (!$data) continue;
+
+                $additionRows[] = [
+                    'booking_hold_id' => $bookingHoldHeader->id,
+                    'additional_id' => $data->id,
+                    'price' => $data->price,
+                ];
+            }
+        }
+
+        if (!empty($additionRows)) {
+            DB::table('booking_hold_additions')->insert($additionRows);
+        }
+
         return response()->json([
             'success' => true,
             'expires_at' => $expiresAt,
             'booking_hold_header_id' => $bookingHoldHeader->id,
             'sessions' => $holds,
+            'additional' => $additionRows
         ]);
     }
 
     public function show($id)
     {
-        $header = BookingHoldHeader::with(['venue', 'court'])
+        $header = BookingHoldHeader::with([
+            'venue:id,name',
+            'venue.firstImage',
+            'court:id,name,image',
+            'court.addition.additionalType',
+            'additional',
+            'additional.additional.additionalType',
+            'hold:id,booking_hold_header_id,start_time,end_time,price'
+        ])
             ->findOrFail($id);
 
-        $sessions = BookingHold::where('booking_hold_header_id', $header->id)
-            ->orderBy('start_time')
-            ->get();
+        $header->session_price = $header->hold->sum('price');
+        $header->subtotal = ($header->hold->sum('price') + $header->additional->sum('price'));
+        $header->admin_fee = 4000;
+        $header->tax = $header->subtotal * 0.02;
+        $header->total_price = ($header->subtotal + $header->admin_fee + $header->tax);
 
         return response()->json([
-            'id' => $header->id,
-            'venue' => $header->venue,
-            'court' => $header->court,
-            'date' => $header->booking_date,
-            'expires_at' => $header->expires_at,
-            'sessions' => $sessions,
-            'total_price' => $sessions->sum('price'),
-            'guest_contact' => $header->guest_contact,
-            'user_id' => $header->user_id,
+            'success' => true,
+            'data' => $header,
         ]);
     }
 
@@ -212,14 +270,14 @@ class BookingHoldController extends Controller
         $user = Auth::check();
 
         if ($user) {
-           $checkExisting = BookingHoldHeader::where('user_id', Auth::id())->first();
+            $checkExisting = BookingHoldHeader::where('user_id', Auth::id())->first();
         }
 
-        if($checkExisting) {
-        return response()->json([
-            'success' => true,
-            'data'   => $checkExisting
-        ]);
+        if ($checkExisting) {
+            return response()->json([
+                'success' => true,
+                'data'   => $checkExisting
+            ]);
         } else {
             return response()->json([
                 'success' => false,
@@ -232,20 +290,26 @@ class BookingHoldController extends Controller
     {
         try {
 
-            $header = BookingHoldHeader::with('hold')->findOrFail($id);
+            $header = BookingHoldHeader::with(['hold', 'additional'])->findOrFail($id);
 
             $orderId = 'ORDER-' . time() . '-' . $header->id;
 
-            $grossAmount = $header->hold->sum('price');
+            $sessionTotal = $header->hold->sum('price');
+            $additionalTotal = $header->additional->sum('price');
 
-            if ($grossAmount <= 0) {
+            $subtotal = $sessionTotal + $additionalTotal;
+            $admin_fee = 4000;
+            $tax = $subtotal * 0.02;
+            $total_price = ($subtotal + $admin_fee + $tax);
+
+            if ($total_price <= 0) {
                 throw new \Exception('Total price is 0');
             }
 
             $params = [
                 'transaction_details' => [
                     'order_id' => $orderId,
-                    'gross_amount' => $grossAmount,
+                    'gross_amount' => $total_price,
                 ],
             ];
 
@@ -261,7 +325,6 @@ class BookingHoldController extends Controller
             return response()->json([
                 'snap_token' => $snapToken
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'error' => $e->getMessage(),
@@ -270,30 +333,52 @@ class BookingHoldController extends Controller
         }
     }
 
+    private function generateCode()
+    {
+        do {
+            $code = strtoupper(Str::random(6));
+        } while (Booking::where('code', $code)->exists());
+
+        return $code;
+    }
 
     private function markAsPaid($orderId)
     {
         DB::transaction(function () use ($orderId) {
 
-            $header = BookingHoldHeader::with('hold')
+            $header = BookingHoldHeader::with('hold', 'additional')
                 ->where('midtrans_order_id', $orderId)
                 ->first();
 
             if (!$header) return;
 
-            $totalPrice = $header->hold->sum('price');
+            $sessionTotal = $header->hold->sum('price');
+            $additionalTotal = $header->additional->sum('price');
+
+            $subtotal = $sessionTotal + $additionalTotal;
+            $admin_fee = 4000;
+            $tax = $subtotal * 0.02;
+            $total_price = ($subtotal + $admin_fee + $tax);
+
+            $admin_fee = 4000;
+            $tax = $subtotal * 0.02;
+            $total_price = ($subtotal + $admin_fee + $tax);
 
             $booking = Booking::create([
-                'venue_id' => $header->venue_id,
-                'court_id' => $header->court_id,
-                'booking_date' => $header->booking_date,
                 'user_id' => $header->user_id,
                 'guest_contact' => $header->guest_contact,
                 'guest_name' => $header->guest_name,
-                'price' => $totalPrice,
+                'venue_id' => $header->venue_id,
+                'court_id' => $header->court_id,
+                'booking_date' => $header->booking_date,
+                'price' => $subtotal,
+                'admin_fee'  => $admin_fee,
+                'tax'        => $tax,
+                'total_price' => $total_price,
                 'midtrans_order_id' => $header->midtrans_order_id,
-                'payment_status' => 'paid',
-                'status' => 'confirmed',
+                'payment_status' => 'Paid',
+                'status' => 'Confirmed',
+                'code' => $this->generateCode()
             ]);
 
             foreach ($header->hold as $hold) {
@@ -305,11 +390,21 @@ class BookingHoldController extends Controller
                 ]);
             }
 
+            if ($header->additional) {
+                foreach ($header->additional as $add) {
+                    BookingAdditional::create([
+                        'booking_id'    => $booking->id,
+                        'additional_id' => $add->id,
+                        'price'         => $add->price,
+                    ]);
+                }
+            }
+
             $userActivity = ActivityLevel::where('user_id', Auth::id())->first();
 
             if ($userActivity) {
                 $activityPoints = ($userActivity->total_activity + 1) * 5;
-                $spendingPoints = floor(($userActivity->total_spending + $totalPrice) / 30000);
+                $spendingPoints = floor(($userActivity->total_spending + $total_price) / 30000);
                 $totalPoints = $activityPoints + $spendingPoints;
 
                 if ($totalPoints < 30) {
@@ -331,17 +426,18 @@ class BookingHoldController extends Controller
                     'user_id'        => $header->user_id,
                     'level'          => $level,
                     'total_activity' => $userActivity->total_activity + 1,
-                    'total_spending' => $userActivity->total_spending + $totalPrice
+                    'total_spending' => $userActivity->total_spending + $total_price
                 ]);
             } else {
                 ActivityLevel::insert([
                     'user_id'        => $header->user_id,
                     'level'          => 'Rookie',
                     'total_activity' => 1,
-                    'total_spending' => $totalPrice
+                    'total_spending' => $total_price
                 ]);
             }
 
+            $header->additional()->delete();
             $header->hold()->delete();
             $header->delete();
         });
@@ -363,11 +459,12 @@ class BookingHoldController extends Controller
         $status = $request->transaction_status;
         $fraud = $request->fraud_status;
 
-        $signatureKey = hash('sha512',
+        $signatureKey = hash(
+            'sha512',
             $request->order_id .
-            $request->status_code .
-            $request->gross_amount .
-            config('midtrans.server_key')
+                $request->status_code .
+                $request->gross_amount .
+                config('midtrans.server_key')
         );
 
         if ($signatureKey !== $request->signature_key) {
@@ -378,61 +475,12 @@ class BookingHoldController extends Controller
             if ($fraud == 'accept') {
                 $this->markAsPaid($orderId);
             }
-        }
-        elseif ($status == 'settlement') {
+        } elseif ($status == 'settlement') {
             $this->markAsPaid($orderId);
-        }
-        elseif ($status == 'expire' || $status == 'cancel') {
+        } elseif ($status == 'expire' || $status == 'cancel') {
             $this->markAsFailed($orderId);
         }
 
         return response()->json(['message' => 'ok']);
     }
-
 }
-
-
-    // private function finalizeBooking($header)
-    // {
-    //     DB::transaction(function () use ($header) {
-
-    //         foreach ($header->bookingHolds as $hold) {
-
-    //             // 🔥 ANTI DOUBLE BOOKING CHECK
-    //             $conflict = Booking::where('court_id', $header->court_id)
-    //                 ->where('booking_date', $header->booking_date)
-    //                 ->where(function ($query) use ($hold) {
-    //                     $query->where('start_time', '<', $hold->end_time)
-    //                         ->where('end_time', '>', $hold->start_time);
-    //                 })
-    //                 ->lockForUpdate()
-    //                 ->exists();
-
-    //             if ($conflict) {
-    //                 throw new \Exception('Slot already booked');
-    //             }
-
-    //             Booking::create([
-    //                 'venue_id' => $header->venue_id,
-    //                 'court_id' => $header->court_id,
-    //                 'user_id' => $header->user_id,
-    //                 'guest_contact' => $header->guest_contact,
-    //                 'guest_name' => $header->guest_name,
-    //                 'booking_date' => $header->booking_date,
-    //                 'start_time' => $hold->start_time,
-    //                 'end_time' => $hold->end_time,
-    //                 'price' => $hold->price,
-    //                 'midtrans_order_id' => $header->midtrans_order_id,
-    //                 'payment_status' => 'paid',
-    //                 'status' => 'confirmed'
-    //             ]);
-    //         }
-
-    //         $header->update([
-    //             'payment_status' => 'paid'
-    //         ]);
-
-    //         $header->bookingHolds()->delete();
-    //         $header->delete();
-    //     });
-    // }

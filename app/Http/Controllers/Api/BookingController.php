@@ -67,7 +67,7 @@ class BookingController extends Controller
     {
         $booking = Booking::where('payment_ref', $request->order_id)->first();
 
-        if (!$booking || $booking->status === 'paid') {
+        if (!$booking || $booking->status === 'Paid') {
             return response()->json(['ok' => true]);
         }
         if ($request->transaction_status === 'settlement') {

@@ -13,6 +13,8 @@ class BookingSession extends Model
         'price'
     ];
 
+    public $timestamps = false;
+
     protected $cast = [
         'booking_date' => 'date'
     ];

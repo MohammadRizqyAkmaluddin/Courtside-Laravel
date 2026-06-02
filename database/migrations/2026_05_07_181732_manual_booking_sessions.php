@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transactions', function(Blueprint $table) {
+        Schema::create('manual_booking_sessions', function(Blueprint $table){
             $table->id();
-            $table->foreignId('court_booking_id')->constrained()->cascadeOnDelete();
-            $table->enum('method', ['QRIS', 'Transfer', 'VA']);
-            $table->integer('amount');
-            $table->timestamps();
+            $table->foreignId('manual_booking_id')->constrained()->cascadeOnDelete();
+            $table->time('start_time');
+            $table->time('end_time');
+            $table->integer('price');
+            $table->index('manual_booking_id');
+            $table->engine = 'InnoDB';
         });
     }
 

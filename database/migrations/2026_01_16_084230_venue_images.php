@@ -14,7 +14,9 @@ return new class extends Migration
         Schema::create('venue_images', function(Blueprint $table) {
             $table->id();
             $table->foreignId('venue_id')->constrained()->cascadeOnDelete();
+            $table->boolean('is_primary')->default(false);
             $table->string('image');
+            $table->timestamps();
             $table->engine = 'InnoDB';
         });
     }

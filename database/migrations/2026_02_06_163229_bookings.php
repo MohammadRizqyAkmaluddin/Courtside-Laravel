@@ -18,17 +18,15 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained();
             $table->string('guest_contact')->nullable();
             $table->string('guest_name')->nullable();
-
             $table->date('booking_date');
-
             $table->integer('price');
-
+            $table->integer('admin_fee');
+            $table->integer('tax');
+            $table->integer('total_price');
             $table->string('midtrans_order_id')->unique();
-            $table->string('payment_status');
-
-            $table->string('status')->default('confirmed');
-            // confirmed | cancelled | expired
-
+            $table->enum('payment_status', ['Paid', 'Refund']);
+            $table->enum('status', ['Confirmed', 'Canceled']);
+            $table->string('code')->unique();
             $table->timestamps();
 
             $table->index(['venue_id', 'court_id', 'booking_date']);

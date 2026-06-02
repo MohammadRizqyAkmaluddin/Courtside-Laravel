@@ -127,47 +127,13 @@ class CourtSeeder extends Seeder
                     'name' => $courtNames[array_rand($courtNames)],
                     'price' => $price,
                     'image' => $image,
-                    'session_duration' => $duration
+                    'session_duration' => $duration,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ];
             }
         }
-
-        // 🚀 bulk insert
         DB::table('courts')->insert($rows);
     }
 
 }
-
-
-
-
-
-// venue_id id(1 = padel, 2 = padel, 3 = padel, 4 = padel, 5 = badminton, 6 = tennis, 7 = softball, 8 = padel, 9 = padel, 10 = padel, 11 = padel, 12 = tennis, 13 = tennis, 14 = badminton, 15 = minisoccer, 16 = minisoccer, 17 = padel, 18 = tennis, 19 = tennis, 20 = padel, 21 = futsal, 22 = basketball, 23 = padel, 24 = basketball, 25 = basketball, 26 = golf indor, 27 = footbal, 28 = padel, 29 = basketball, 30 = futsal),
-// court_material_id id(1 = hard court, 2 = clay court, 3 = grass court),
-// court_type id(1 = indoor, 2 = outdoor),
-// sport_type_id id(1 = Football, 2 = minisoccer, 3 = futsal, 4 = badminton, 5 = padel, 6 = tennis, 7 = basketball, 8 = volley, 9 = golf, 10 = baseball, 11 = softball, 12 = pilates, 13 = yoga, 14 = shootingrange)
-
-
-// dari data diatas buatin seeder courts dengan kompleksitas tercepat untuk data yang besar
-// note: - satu venue memiliki 2 sampai 6 court,
-//       - khusus untuk venue padel pasti memiliki beberapa court dengan sport type padel, dan juga bisa punya court dengan tipe sport lainnya (tidak harus, bisa padel saja)
-//       - untuk venue selain padel buatkan court dengan sport type sesuai dengan konteks venue tersebut, dan juga bisa ditambahkan court dengan sport type random lainnya
-//       - untuk court_type dan court_material bebas saja secara random
-//       - price buat senormal mungkin dengan harga di indonesia
-//       - buatkan name yang keren ataupun yang cocok (boleh bahasa inggris boleh indo) contohnya Black Mamba Court, Blue Ocean Court, Lava Court , Court A, Court B, dll
-
-
-
-
-
-// - kalau sport_type_id = 1, image = random(football1.jpg sampai football5.jpg)
-// - kalau sport_type_id = 2, image = random(minisoccer1.jpg sampai minisocer5.jpg)
-// - kalau sport_type_id = 3, image = random(futsal1.jpg sampai futsal5.jpg)
-// - kalau sport_type_id = 4, image = random(badminton1.jpg sampai badminton10.jpg)
-// - kalau sport_type_id = 5, image = random(padel1.jpg sampai padel15.jpg)
-// - kalau sport_type_id = 6, image = random(tennis1.jpg sampai tennis10.jpg)
-// - kalau sport_type_id = 7, image = random(basketball1.jpg sampai basketball10.jpg)
-// - kalau sport_type_id = 8, image = random(volley1.jpg sampai volley10.jpg)
-// - kalau sport_type_id = 9, image = random(golf1.jpg sampai golf5.jpg)
-// - kalau sport_type_id = 10, image = random(baseball1.jpg sampai baseball5.jpg)
-// - kalau sport_type_id = 11, image = random(softball1.jpg sampai softball5.jpg)

@@ -29,6 +29,12 @@ class User extends Authenticatable
     public function level() {
         return $this->hasMany(ActivityLevel::class);
     }
+    public function refundCredit() {
+        return $this->hasOne(UserRefundCredit::class);
+    }
+    public function transferRequest() {
+        return $this->hasOne(UserCreditTransferRequest::class);
+    }
 
     protected $appends = ['profile_image_url'];
 

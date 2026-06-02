@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sport_type_id')->constrained()->cascadeOnDelete();
             $table->string('addon', 50);
+            $table->engine = 'InnoDB';
         });
     }
 

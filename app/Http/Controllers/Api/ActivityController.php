@@ -16,35 +16,60 @@ class ActivityController extends Controller
 {
     public function myActiveHolds()
     {
-        $holds = BookingHoldHeader::with([
-                'venue',
-                'court',
-                'hold'
-            ])
+        $header = BookingHoldHeader::with([
+            'venue',
+            'court',
+            'hold',
+            'additional',
+
+        ])
             ->where('user_id', Auth::id())
             ->orderBy('id')
-            ->get();
+            ->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => $holds
-        ]);
+        $header->subtotal = $header->hold->sum('price');
+        $header->admin_fee = 4000;
+        $header->tax = $header->subtotal * 0.02;
+        $header->total_price = ($header->subtotal + $header->admin_fee + $header->tax);
+
+        return response()->json($header);
     }
 
     public function getActiveBookings()
     {
         $now = Carbon::now();
 
-        $bookings = Booking::with(['sessions' => function ($query) {
-            $query->orderBy('start_time');
-        }])
-        ->whereHas('sessions', function ($query) use ($now) {
-            $query->whereRaw("CONCAT(booking_date, ' ', end_time) > ?", [$now]);
-        })
-        ->where('user_id', Auth::id())
-        ->get();
+        $bookings = Booking::with([
+            'venue:id,name',
+            'venue.firstImage',
+            'court:id,name,image',
+            'additional:id,booking_id,price,additional_id',
+            'additional.additional.additionalType',
+            'sessions' => function ($query) {
+                $query->orderBy('start_time');
+            }
+        ])
+            ->whereHas('sessions', function ($query) use ($now) {
+                $query->whereRaw("CONCAT(booking_date, ' ', end_time) > ?", [$now]);
+            })
+            ->where('user_id', Auth::id())
+            ->get();
 
         $bookings = $bookings->map(function ($booking) use ($now) {
+
+            $bookingDate = Carbon::parse($booking->booking_date)->startOfDay();
+            $today = $now->copy()->startOfDay();
+
+            if ($bookingDate->equalTo($today)) {
+                $booking->day_status = 'Today';
+            } elseif ($bookingDate->equalTo($today->copy()->addDay())) {
+                $booking->day_status = 'Tomorrow';
+            } elseif ($bookingDate->greaterThan($today)) {
+                $days = $today->diffInDays($bookingDate);
+                $booking->day_status = "Starts in {$days} days";
+            } else {
+                $booking->day_status = 'Past';
+            }
 
             $booking->sessions = $booking->sessions->map(function ($session) use ($now, $booking) {
 
@@ -54,6 +79,10 @@ class ActivityController extends Controller
 
                 return $session;
             });
+
+            $booking->active_sessions = $booking->sessions
+                ->where('status', true)
+                ->count();
 
             return $booking;
         });
@@ -71,9 +100,12 @@ class ActivityController extends Controller
             'venue:id,name',
             'venue.firstImage',
             'court:id,name,image',
-            'rating:id,booking_id,rate,review,updated_at'
-            ])
+            'rating:id,booking_id,rate,review,updated_at',
+            'additional:id,booking_id,price,additional_id',
+            'additional.additional.additionalType',
+        ])
             ->where('user_id', Auth::id())
+            ->orderBy('created_at', 'DESC')
             ->get();
 
         return response()->json([
@@ -104,7 +136,8 @@ class ActivityController extends Controller
         ]);
     }
 
-    public function leaveCommunity($communityId) {
+    public function leaveCommunity($communityId)
+    {
 
         CommunityMember::where('user_id', Auth::id())
             ->where('community_id', $communityId)
@@ -115,5 +148,4 @@ class ActivityController extends Controller
             'message' => 'Member data removed'
         ]);
     }
-
 }

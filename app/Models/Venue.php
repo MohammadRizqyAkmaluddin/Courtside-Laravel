@@ -13,7 +13,7 @@ class Venue extends Authenticatable
 
     protected $table = 'venues';
 
-    protected $fillable = ['name', 'city_id', 'email', 'password', 'description', 'rules', 'image', 'address', 'bank_account'];
+    protected $fillable = ['name', 'city_id', 'status', 'email', 'password', 'description', 'rules', 'image', 'address'];
 
     protected $hidden = ['password'];
 
@@ -39,21 +39,51 @@ class Venue extends Authenticatable
     {
         return $this->hasOne(VenueImage::class)->oldestOfMany();
     }
+    public function primaryImage()
+    {
+        return $this->hasOne(VenueImage::class)
+            ->where('is_primary', true);
+    }
     public function community() {
         return $this->hasMany(Community::class);
     }
     public function booking() {
         return $this->hasMany(Booking::class);
     }
+    public function balance() {
+        return $this->hasMany(VenueBalance::class);
+    }
+    public function withdrawal() {
+        return $this->hasMany(WithdrawalHistory::class);
+    }
+    public function bank() {
+        return $this->hasMany(VenueBankAccount::class);
+    }
+    public function store() {
+        return $this->hasMany(StoreProduct::class);
+    }
+    public function cart() {
+        return $this->hasMany(StoreCart::class);
+    }
+    public function storeTransaction() {
+        return $this->hasMany(StoreTransaction::class);
+    }
+    public function qris() {
+        return $this->hasOne(VenueQris::class);
+    }
+    public function employee() {
+        return $this->hasMany(Employee::class);
+    }
+
     public function ratings()
-{
-    return $this->hasManyThrough(
-        Rating::class,
-        Booking::class,
-        'venue_id',     // foreign key di bookings
-        'booking_id',   // foreign key di ratings
-        'id',           // local key di venues
-        'id'            // local key di bookings
-    );
-}
+    {
+        return $this->hasManyThrough(
+            Rating::class,
+            Booking::class,
+            'venue_id',
+            'booking_id',
+            'id',
+            'id'
+        );
+    }
 }

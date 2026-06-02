@@ -17,10 +17,7 @@ class VenueAuthController extends Controller
             'email'         => 'required|email|unique:values,email',
             'password'      => 'required|min:8',
             'phone'         => 'required|max:15',
-            'description'   => 'required|string',
-            'rules'         => 'required|string',
             'address'       => 'required|string',
-            'bank_account'  => 'nullable|string'
         ]);
 
         $data['password'] = Hash::make($data['password']);

@@ -26,13 +26,20 @@ class BookingHoldHeader extends Model
         'expires_at'   => ''
     ];
 
-    public function hold() {
+    public function hold()
+    {
         return $this->hasMany(BookingHold::class, 'booking_hold_header_id');
     }
-    public function venue() {
+    public function additional()
+    {
+        return $this->hasMany(BookingHoldAdditional::class);
+    }
+    public function venue()
+    {
         return $this->belongsTo(Venue::class);
     }
-    public function court() {
+    public function court()
+    {
         return $this->belongsTo(Court::class);
     }
 }

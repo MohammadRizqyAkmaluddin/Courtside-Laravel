@@ -12,7 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('courts', function(Blueprint $table) {
+        Schema::create('courts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('venue_id')->constrained()->cascadeOnDelete();
             $table->foreignId('sport_type_id')->constrained()->cascadeOnDelete();
@@ -22,6 +22,7 @@ return new class extends Migration
             $table->integer('price');
             $table->integer('session_duration');
             $table->string('image')->nullable();
+            $table->timestamps();
             $table->engine = 'InnoDB';
         });
     }
