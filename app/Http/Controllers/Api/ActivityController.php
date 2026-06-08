@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 
 use App\Models\CommunityMember;
-use App\Models\ActivityLevel;
 use App\Models\BookingHoldHeader;
 use App\Models\Booking;
 use Carbon\Carbon;
@@ -123,16 +122,6 @@ class ActivityController extends Controller
         return response()->json([
             'success' => true,
             'data' => $member
-        ]);
-    }
-
-    public function level()
-    {
-        $level = ActivityLevel::where('user_id', Auth::user()->id)->first();
-
-        return response()->json([
-            'success' => true,
-            'data' => $level
         ]);
     }
 

@@ -9,7 +9,6 @@ use App\Models\Booking;
 use App\Models\BookingSession;
 use App\Models\BookingHold;
 use App\Models\BookingHoldHeader;
-use App\Models\ActivityLevel;
 use App\Models\BookingHoldAdditional;
 use App\Models\BookingAdditional;
 use Carbon\Carbon;
@@ -47,7 +46,7 @@ class BookingHoldController extends Controller
             'venue_id'     => $request->venue_id,
             'court_id'     => $request->court_id,
             'user_id'      => $userId,
-            'booking_type' => 'Self-Booking',
+            'booking_type' => 'Self-booking',
             'booking_date' => $request->date
         ]);
 
@@ -120,7 +119,7 @@ class BookingHoldController extends Controller
             'court_id' => $request->court_id,
             'guest_contact' => $request->guest_contact,
             'guest_name' => $request->guest_name,
-            'booking_type' => 'Self-Booking',
+            'booking_type' => 'Self-booking',
             'booking_date'  => $request->date,
             'expires_at' => $expiresAt
         ]);
@@ -147,7 +146,7 @@ class BookingHoldController extends Controller
                 if (!$data) continue;
 
                 $additionRows[] = [
-                    'booking_hold_id' => $bookingHoldHeader->id,
+                    'booking_hold_header_id' => $bookingHoldHeader->id,
                     'additional_id' => $data->id,
                     'price' => $data->price,
                 ];
@@ -191,7 +190,6 @@ class BookingHoldController extends Controller
             'data' => $header,
         ]);
     }
-
 
     public function cancel(Request $request)
     {
@@ -326,12 +324,11 @@ class BookingHoldController extends Controller
                 'snap_token' => $snapToken
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'line' => $e->getLine(),
-            ], 500);
+            \Log::error($e);
+            dd($e->getMessage(), $e->getLine());
         }
     }
+
 
     private function generateCode()
     {
@@ -398,43 +395,6 @@ class BookingHoldController extends Controller
                         'price'         => $add->price,
                     ]);
                 }
-            }
-
-            $userActivity = ActivityLevel::where('user_id', Auth::id())->first();
-
-            if ($userActivity) {
-                $activityPoints = ($userActivity->total_activity + 1) * 5;
-                $spendingPoints = floor(($userActivity->total_spending + $total_price) / 30000);
-                $totalPoints = $activityPoints + $spendingPoints;
-
-                if ($totalPoints < 30) {
-                    $level = 'Rookie';
-                } elseif ($totalPoints < 100) {
-                    $level = 'Casual';
-                } elseif ($totalPoints < 220) {
-                    $level = 'Commited';
-                } elseif ($totalPoints < 400) {
-                    $level = 'Dedicated';
-                } else {
-                    $level = 'Elite';
-                }
-            }
-
-
-            if ($userActivity) {
-                ActivityLevel::update([
-                    'user_id'        => $header->user_id,
-                    'level'          => $level,
-                    'total_activity' => $userActivity->total_activity + 1,
-                    'total_spending' => $userActivity->total_spending + $total_price
-                ]);
-            } else {
-                ActivityLevel::insert([
-                    'user_id'        => $header->user_id,
-                    'level'          => 'Rookie',
-                    'total_activity' => 1,
-                    'total_spending' => $total_price
-                ]);
             }
 
             $header->additional()->delete();

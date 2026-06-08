@@ -26,9 +26,6 @@ class User extends Authenticatable
     public function member() {
         return $this->hasMany(CommunityMember::class);
     }
-    public function level() {
-        return $this->hasMany(ActivityLevel::class);
-    }
     public function refundCredit() {
         return $this->hasOne(UserRefundCredit::class);
     }

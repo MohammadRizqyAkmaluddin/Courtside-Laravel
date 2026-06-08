@@ -78,7 +78,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/my-activity/active-booking', [ActivityController::class, 'getActiveBookings']);
     Route::get('/my-activity/booking-history', [ActivityController::class, 'history']);
     Route::get('/my-activity/community-membership', [ActivityController::class, 'myMembership']);
-    Route::get('/my-activity/level', [ActivityController::class, 'level']);
     Route::post('/my-activity/{community}/leave-community', [ActivityController::class, 'leaveCommunity']);
 
     Route::post('/my-activity/rate', [RatingController::class, 'store']);
