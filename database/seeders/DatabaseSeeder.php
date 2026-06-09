@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
             VenueSeeder::class,
             VenueBankAccountSeeder::class,
             VenueQrisSeeder::class,
-            venueImageSeeder::class,
+            VenueImageSeeder::class,
             CourtMaterialSeeder::class,
             SportTypeSeeder::class,
             AdditionalTypeSeeder::class,
