@@ -1,4 +1,4 @@
-# Courtside (Back End)
+# Courtside (Back-End)
 Court Booking & Venue Management Platform
 
 A full-stack web application for booking sports courts with real-time scheduling, integrated payment gateway, and venue management dashboard.
@@ -7,7 +7,7 @@ A full-stack web application for booking sports courts with real-time scheduling
 
 ## Preview
 
-![Courtside Preview](https://raw.githubusercontent.com/MohammadRizqyAkmaluddin/Readme-Assets/main/Courtside/asset1.png)
+![Courtside Preview](https://raw.githubusercontent.com/MohammadRizqyAkmaluddin/Readme-Assets/blob/main/Courtside/asset1.png)
 
 ---
 
