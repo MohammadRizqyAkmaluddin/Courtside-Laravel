@@ -1,4 +1,5 @@
-# Courtside (Court Booking & Venue Management Platform)
+# Courtside (Back End)
+Court Booking & Venue Management Platform
 
 A full-stack web application for booking sports courts with real-time scheduling, integrated payment gateway, and venue management dashboard.
 
